@@ -1,0 +1,148 @@
+#!/bin/bash -e
+exec > >(tee -i "my_ave.log")
+exec 2>&1
+sed -i 's/\r//' ave
+
+COLS="$(tput cols)"
+INPUTDIR="C:/AVE/InputDIR"
+OUTPUTDIR="C:/AVE/OutputDIR"
+ADD="AVE-"
+FILENAME="$1"
+EXPECTED_VIDEO_WIDTH="$2"
+EXPECTED_VIDEO_HEIGHT="$3"
+EXPECTED_VIDEO_BITRATE="$4"
+MIDDLEFILENAME=$ADD$FILENAME
+NEWFILENAME=$FILENAME
+USER=$(whoami)
+
+usage() {
+echo -e "
+
+usage: ./ave [-h] [File Name] [EXPECTED WIDTH OF VIDEO] [EXPECTED HEIGHT OF VIDEO] [EXPECTED_VIDEO_BITRATE]
+
+mandatory arguments:
+ [File Name]				file name to be compress
+
+optional arguments:
+ [-h]					how this help message and exit
+ [EXPECTED WIDTH OF VIDEO]		expected width in output video
+ [EXPECTED HEIGHT OF VIDEO]		expected height in output video
+ [EXPECTED_VIDEO_BITRATE]		expected bitrate in output video
+
+example: 
+
+1. To reduce video file size and remove audio from it, Just Enter the file name infront of './ave' 
+
+	$ ./ave APP-1033.mov
+
+
+2. To scale(reduce) video width: (Best widths: 320/480/640/720/800/1080)
+
+	$ ./ave APP-1033.mov 480
+
+
+Tip: The default video scale width is 320 and the height is calculated automatically according to current aspect ratio of video.
+
+"
+}
+
+sectionline() {
+	echo -ne "\n" 
+	for ((n=1;n <= $COLS;n++))
+	{
+		echo -ne "="
+	}
+	echo -ne "\n\n"
+}
+
+getInfo() {
+	VIDEO_SIZE=$(ffprobe -v error -show_entries format=size -of default=noprint_wrappers=1:nokey=1 $1)
+	echo -e " VIDEO SIZE: ${VIDEO_SIZE}"
+	VIDEO_DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $1)
+	echo -e " VIDEO DURATION: $VIDEO_DURATION"
+	eval $(ffprobe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=height,width $1)
+	VIDEO_WIDTH=${streams_stream_0_width}
+	echo -e " VIDEO WIDTH: $VIDEO_WIDTH"
+	VIDEO_HEIGHT=${streams_stream_0_height}
+	echo -e " VIDEO HEIGHT: $VIDEO_HEIGHT"
+}
+
+if [ $# -eq 0 ]
+then
+	usage
+	exit 1
+fi
+
+while getopts “hi:” OPTION
+do
+	case $OPTION in
+		h)
+			usage
+			exit 1
+			;;
+	esac
+done
+
+if [ -f "${INPUTDIR}/${FILENAME}" ]
+then
+	echo -e "\n${INPUTDIR}/${FILENAME} exist!"
+else
+	echo -e "\nFile:  '${INPUTDIR}/${FILENAME}'  doesn't exist! Please enter the correct file name and try again!"
+    exit 1
+fi
+
+if [ ${EXPECTED_VIDEO_WIDTH:=0} -gt 1920 ]
+then
+	echo -e "\nYou cannot increase video width to $EXPECTED_VIDEO_WIDTH, As it may harm you computer by using all cpu size to process your expectations. Please enter video width size less than 1920."
+	exit 1
+fi
+
+if [ ${EXPECTED_VIDEO_HEIGHT:=0} -gt 1080 ]
+then
+	echo -e "\nYou cannot increase video height to $EXPECTED_VIDEO_HEIGHT, As it may harm you computer by using all cpu size to process your expectations. Please enter video height size less than 1080."
+	exit 1
+fi
+
+if [ ${EXPECTED_VIDEO_BITRATE:=0} -gt 2048 ]
+then
+	echo -e "\nYou cannot increase video bitrate to $EXPECTED_VIDEO_BITRATE, As it may harm you computer by using all cpu size to process your expectations. Please enter video bitrate less than 2048."
+	exit 1
+fi
+
+sectionline
+
+echo -e "Reducing Video Size..."
+rm -rf "${OUTPUTDIR}/${MIDDLEFILENAME}"
+ffmpeg -i "${INPUTDIR}/${FILENAME}" -vf scale="${EXPECTED_VIDEO_WIDTH:=320}:${EXPECTED_VIDEO_HEIGHT:=(trunc(ow\/a\/2)\*2)}" -b:v ${EXPECTED_VIDEO_BITRATE:=512}k -vcodec H.264 -c:v libx264 -acodec copy "${OUTPUTDIR}/${MIDDLEFILENAME}"
+echo -e "Video Size Reduced Successfully!"
+
+sectionline
+
+echo -e "Logging Video Information After Reducing Size..."
+getInfo "${OUTPUTDIR}/${MIDDLEFILENAME}"
+echo -e "Edited Video Information Logged!"
+
+sectionline
+
+echo -e "Removing Audio..."
+rm -rf "${OUTPUTDIR}/${NEWFILENAME}"
+ffmpeg -i "${OUTPUTDIR}/${MIDDLEFILENAME}" -an -vcodec copy "${OUTPUTDIR}/${NEWFILENAME}"
+rm -rf "${OUTPUTDIR}/${MIDDLEFILENAME}"
+echo -e "Audio Removed Successfully!"
+
+sectionline
+
+echo -e "Video Details Before Compression:\n"
+getInfo "${INPUTDIR}/${FILENAME}"
+
+echo -e "\n\nVideo Details After Compression:\n"
+getInfo "${OUTPUTDIR}/${NEWFILENAME}"
+
+sectionline
+
+title="Thanks for Using AVE!"
+subtitle="Your file is available here:  ${OUTPUTDIR}/${NEWFILENAME}"
+printf "%*s\n\n" $(((${#title}+$COLS)/2)) "$title"
+printf "%*s\n" $(((${#subtitle}+$COLS)/2)) "$subtitle"
+
+sectionline
