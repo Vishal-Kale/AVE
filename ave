@@ -11,6 +11,9 @@ FILENAME="$1"
 EXPECTED_VIDEO_WIDTH="$2"
 EXPECTED_VIDEO_HEIGHT="$3"
 EXPECTED_VIDEO_BITRATE="$4"
+CHECK_VIDEO_WIDTH=$EXPECTED_VIDEO_WIDTH
+CHECK_VIDEO_HEIGHT=$EXPECTED_VIDEO_HEIGHT
+CHECK_VIDEO_BITRATE=$EXPECTED_VIDEO_BITRATE
 MIDDLEFILENAME=$ADD$FILENAME
 NEWFILENAME=$FILENAME
 USER=$(whoami)
@@ -91,19 +94,19 @@ else
     exit 1
 fi
 
-if [ ${EXPECTED_VIDEO_WIDTH:=0} -gt 1920 ]
+if [ ${CHECK_VIDEO_WIDTH:=0} -gt 1920 ]
 then
 	echo -e "\nYou cannot increase video width to $EXPECTED_VIDEO_WIDTH, As it may harm you computer by using all cpu size to process your expectations. Please enter video width size less than 1920."
 	exit 1
 fi
 
-if [ ${EXPECTED_VIDEO_HEIGHT:=0} -gt 1080 ]
+if [ ${CHECK_VIDEO_HEIGHT:=0} -gt 1080 ]
 then
 	echo -e "\nYou cannot increase video height to $EXPECTED_VIDEO_HEIGHT, As it may harm you computer by using all cpu size to process your expectations. Please enter video height size less than 1080."
 	exit 1
 fi
 
-if [ ${EXPECTED_VIDEO_BITRATE:=0} -gt 2048 ]
+if [ ${CHECK_VIDEO_BITRATE:=0} -gt 2048 ]
 then
 	echo -e "\nYou cannot increase video bitrate to $EXPECTED_VIDEO_BITRATE, As it may harm you computer by using all cpu size to process your expectations. Please enter video bitrate less than 2048."
 	exit 1
